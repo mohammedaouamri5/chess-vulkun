@@ -5,6 +5,8 @@ project "chess"
    targetdir "bin/%{cfg.buildcfg}"
    staticruntime "off"
 
+   defines { "IMGUI_DEFINE_MATH_OPERATORS" }
+
    files { "src/**.h", "src/**.cpp" }
 
    includedirs
@@ -21,8 +23,14 @@ project "chess"
 
     links
     {
-        "Walnut"
+        "Walnut",
+        "ImGui",
+        "GLFW",
+        "%{Library.Vulkan}",
     }
+
+    filter "system:linux"
+       links { "X11", "Xrandr", "Xi", "Xinerama", "Xcursor", "pthread", "dl" }
 
    targetdir ("../bin/" .. outputdir .. "/%{prj.name}")
    objdir ("../bin-int/" .. outputdir .. "/%{prj.name}")
@@ -30,6 +38,9 @@ project "chess"
    filter "system:windows"
       systemversion "latest"
       defines { "WL_PLATFORM_WINDOWS" }
+
+   filter "system:linux"
+      defines { "WL_PLATFORM_LINUX" }
 
    filter "configurations:Debug"
       defines { "WL_DEBUG" }

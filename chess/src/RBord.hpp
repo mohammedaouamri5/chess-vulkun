@@ -8,6 +8,9 @@
 #include "Walnut/Image.h"
 #include "Bord.hpp"
 
+#include <list>
+#include <memory>
+
  
  
 class RBord : public Walnut::Layer

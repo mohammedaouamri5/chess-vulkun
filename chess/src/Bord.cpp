@@ -90,6 +90,7 @@ Bord::~Bord()
 void Bord::UpDate()
 {
     using namespace  KIND;
+    switchTurn();
 
     if ((*this)[{4, 7}] != KING)
         this->king7 = false;

@@ -111,8 +111,7 @@ namespace Walnut
 			}
 		}
 
-		template<>
-		void WriteArray(const std::vector<std::string>& array, bool writeSize)
+		void WriteArray(const std::vector<std::string>& array, bool writeSize = true)
 		{
 			if (writeSize)
 				WriteRaw<uint32_t>((uint32_t)array.size());

@@ -5,6 +5,8 @@ project "Walnut"
    targetdir "bin/%{cfg.buildcfg}"
    staticruntime "off"
 
+   defines { "IMGUI_DEFINE_MATH_OPERATORS" }
+
    files
    {
        "Source/**.h",
@@ -42,6 +44,10 @@ project "Walnut"
    filter "system:windows"
       systemversion "latest"
       defines { "WL_PLATFORM_WINDOWS" }
+
+   filter "system:linux"
+      pic "On"
+      defines { "WL_PLATFORM_LINUX" }
 
    filter "configurations:Debug"
       defines { "WL_DEBUG" }

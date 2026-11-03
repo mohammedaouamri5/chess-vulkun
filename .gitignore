@@ -1,0 +1,16 @@
+# CMake
+/build/
+/out/
+/compile_commands.json
+
+# Premake-generated files
+/Makefile
+*.make
+/bin/
+/bin-int/
+/vendor/*/bin/
+/vendor/*/bin-int/
+
+# Runtime files
+imgui.ini
+*.log

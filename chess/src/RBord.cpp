@@ -1,5 +1,7 @@
 ﻿#include "RBord.hpp"
 #include <iostream>
+#include <cmath>
+#include "imgui_internal.h"
 #include "CONST.hpp"
 #include "Vector.hpp"
 #include "Clik.hpp"
@@ -64,11 +66,12 @@ void RBord::DrawChessboard(const ImVec2& startPos, const ImVec2& boardSize, cons
 			if (Mose)
 			{
 				MOUSE = {x , y};
-				color = isWhite ? Mcoler1 : Mcoler2;
+				const float* mouseColor = isWhite ? Mcoler1 : Mcoler2;
+				color = ImVec4(mouseColor[0], mouseColor[1], mouseColor[2], mouseColor[3]);
 			}
 			else
 				if (this->Valid_move({ _x , _y }))
-					color = Mcoler;
+					color = ImVec4(Mcoler[0], Mcoler[1], Mcoler[2], Mcoler[3]);
 				else
 					color = isWhite ? coler1 : coler2;
 			ImGui::GetWindowDrawList()->AddRectFilled(squarePos, ImVec2(squarePos.x + squareSize.x, squarePos.y + squareSize.y), ImGui::GetColorU32(color));
@@ -135,7 +138,8 @@ void RBord::Rendere() {
 
 		DrawChessboard(ImGui::GetWindowPos() + ImVec2(border, border+dalta),
 					   ImGui::GetWindowSize() + ImVec2(-border*2, -(border * 2) -dalta),
-					   coler1, coler2);
+					   ImVec4(coler1[0], coler1[1], coler1[2], coler1[3]),
+					   ImVec4(coler2[0], coler2[1], coler2[2], coler2[3]));
  
 	}
 	ImGui::End();
