@@ -1,9 +1,8 @@
-
+#define CHESSLOG_MODULE BORD
 #include "Clik.hpp"
+#include "Log.hpp"
 #include "Move.hpp"
 #include "Vector.hpp"
-#include "iostream"
-#include "list"
 /*
  * THE SIZE      :  is a (x , y) that contin the withe and the hight of the window
  * THE EDGE      :  is a (x , y) that contin the distens biween the bord and thee egde of the window
@@ -30,8 +29,25 @@ namespace GAME
 void Move_Handler(const Vector& CORD, RBord & WIN) {
     Bord* BORD = WIN.BORD;
      
-    std::list<Vector> moves = {};
     using namespace GAME;
+
+    // * game over ( checkmate / stalemate ) : no clicks responde
+    if (BORD->GAME_OVER != 0)
+        return;
+
+    // * promotion pick : the pone is on the last row , the ONLY thing a
+    //   board click can do is choose the piece ( nothing else responds )
+    if (BORD->IsPending()) {
+        int8_t TYPE = BORD->PROM_Clicked(CORD);
+        if (TYPE) {
+            BORD->PROM_Pick(TYPE);
+            LOG_INFO("pone promoted")
+                .with_variable("square", CORD)
+                .with_variable("piece", (int)TYPE)
+                .log();
+        }
+        return;
+    }
 
 #ifndef WL_DEBUG
 
@@ -40,7 +56,9 @@ void Move_Handler(const Vector& CORD, RBord & WIN) {
         if (g % 2) {
             click1 = CORD;
                 if ((*BORD)(click1)) {
-                    WIN.Set_Move(Get_Move(CORD, BORD)); 
+                    // the moves are already in the MAP ( made in UpDate )
+                    WIN.Set_Move(BORD->MOVES.get_(click1)); 
+                    LOG_INFO("pick piece").with_variable("square", CORD).log();
                     g += 1;
                 }
         }
@@ -51,24 +69,44 @@ void Move_Handler(const Vector& CORD, RBord & WIN) {
                 tourn = -tourn;
 
                 move(click1, click2, BORD);
+                LOG_INFO("piece moved")
+                    .with_variable("from", click1)
+                    .with_variable("to", click2)
+                    .log();
                 // UpGrade(); ReFrecheTheBord();
                 WIN.Set_Move({});
             }
             else {
-                g -= 1;
-                Move_Handler(CORD, WIN);
+                LOG_WARN("rejected, not a legal square")
+                    .with_variable("square", CORD)
+                    .log();
+                // clear the selection ( no recursion ) ...
+                g = 1;
+                WIN.Set_Move({});
+                click1 = {-1, -1};
+                // ... and re-select in the same pass if a own peice was clicked
+                if (((*BORD)[CORD] * tourn) > 0) {
+                    click1 = CORD;
+                    WIN.Set_Move(BORD->MOVES.get_(click1));
+                    LOG_INFO("pick piece").with_variable("square", CORD).log();
+                    g = 2;
+                }
             }
 
         }
 #ifndef WL_DEBUG
     }
     else {
-        if (((*BORD)[click1] * (*BORD)[CORD] ) > 0) {
-            g -= 1; 
+        // switching selection to another own peice ( no recursion )
+        if (((*BORD)[click1] * (*BORD)[CORD]) > 0) {
+            g = 1;
             WIN.Set_Move({});
-            Move_Handler(CORD, WIN);
+            click1 = CORD;
+            WIN.Set_Move(BORD->MOVES.get_(click1));
+            LOG_INFO("pick piece").with_variable("square", CORD).log();
+            g = 2;
         }
-    }   
+    }
 #endif // WL_DEBUG
 }
             

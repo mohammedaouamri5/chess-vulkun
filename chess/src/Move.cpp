@@ -1,220 +1,247 @@
-
-
+#define CHESSLOG_MODULE BORD
 #include "Move.hpp"
+#include "Log.hpp"
 #include "Vector.hpp"
 
-void Print(const std::list<Vector> &moves) {
-  for (Vector CORD : moves)
-    CORD.Print();
-}
-
-std::list<Vector> Get_Move(const Vector &CORD, Bord *BORD) {
-  std::list<Vector> MOVE = {};
+MoveList Get_Move(const Vector &CORD, Bord *BORD) {
+  MoveList MOVE;
   if (!BORD->IsMyTurn(CORD))
-    return {};
+    return MOVE;
   switch (abs((*BORD)[CORD])) {
   case KIND::KING:
-    MOVE = casling(CORD, BORD);
+    casling(CORD, BORD, MOVE);
+    ATTACK::KING(CORD, BORD, MOVE);
     break;
   case KIND::QUIN:
-    MOVE = ATTACK::QUIN(CORD, BORD);
+    ATTACK::QUIN(CORD, BORD, MOVE);
     break;
   case KIND::KNIGHT:
-    MOVE = ATTACK::KNIGHT(CORD, BORD);
+    ATTACK::KNIGHT(CORD, BORD, MOVE);
     break;
   case KIND::RUKE:
-    MOVE = ATTACK::RUCK(CORD, BORD);
+    ATTACK::RUCK(CORD, BORD, MOVE);
     break;
   case KIND::BESHOP:
-    MOVE = ATTACK::BESHOP(CORD, BORD);
+    ATTACK::BESHOP(CORD, BORD, MOVE);
     break;
   case KIND::PAWN:
-    MOVE = P_Pmove(CORD, BORD);
+    P_Pmove(CORD, BORD, MOVE);
     break;
   default:
-    return {};
+    return MOVE;
   }
-Repet:
-  for (Vector SCAN : MOVE)
-    if (!CanImove(CORD, SCAN, BORD)) {
-      SCAN.Print();
-      MOVE.remove(SCAN);
-      goto Repet;
-    }
+
+  // keep only the moves that leave my king safe (one pass, no remove / goto)
+  int KEEP = 0;
+  for (int i = 0; i < MOVE.N; ++i)
+    if (CanImove(CORD, MOVE.M[i], BORD))
+      MOVE.M[KEEP++] = MOVE.M[i];
+  MOVE.N = KEEP;
 
   return MOVE;
 }
 
-bool ImOAttacked(const Vector &CORD, Bord *BORD) {
-  for (const Vector &SCAN : ATTACK::RUCK(CORD, BORD))
-    if ((*BORD)(SCAN) != 0 && (*BORD)(SCAN) % KIND::RUKE == 0)
+// is CORD attacked by the side BY ? ( 1 = white , -1 = black )
+// no piece needed on CORD, and no lists : just scan the rays
+bool IsAttacked(const Vector &CORD, int BY, Bord *BORD) {
+
+  // * ➡ ⬇ ⬅ ⬆
+  for (const Vector &DIR : MOVES::RUCK) {
+    Vector SCAN = CORD + DIR;
+    while ((*BORD)[SCAN] == 0)
+      SCAN += DIR;
+    int piece = (*BORD)[SCAN];
+    if (piece * BY > 0 && (abs(piece) == KIND::RUKE || abs(piece) == KIND::QUIN))
       return true;
-  for (const Vector &SCAN : ATTACK::BESHOP(CORD, BORD))
-    if ((*BORD)(SCAN) != 0 && (*BORD)(SCAN) % KIND::BESHOP == 0)
+  }
+
+  for (const Vector &DIR : MOVES::BESHOP) {
+    Vector SCAN = CORD + DIR;
+    while ((*BORD)[SCAN] == 0)
+      SCAN += DIR;
+    int piece = (*BORD)[SCAN];
+    if (piece * BY > 0 &&
+        (abs(piece) == KIND::BESHOP || abs(piece) == KIND::QUIN))
       return true;
-  for (const Vector &SCAN : ATTACK::KING(CORD, BORD))
-    if ((*BORD)(SCAN) != 0 && (*BORD)(SCAN) % KIND::RUKE == 0)
-      return true;
-  for (const Vector &SCAN : ATTACK::KNIGHT(CORD, BORD))
-    if ((*BORD)(SCAN) != 0 && (*BORD)(SCAN) % KIND::RUKE == 0)
-      return true;
-  for (const Vector &SCAN : ATTACK::PAWN(CORD, BORD))
-    if (abs((*BORD)(SCAN)) == KIND::PAWN)
+  }
+
+  for (const std::array<Vector, 4> &MOVES : {MOVES::BESHOP, MOVES::RUCK})
+    for (const Vector &DIR : MOVES) {
+      int piece = (*BORD)[CORD + DIR];
+      if (piece * BY > 0 && abs(piece) == KIND::KING)
+        return true;
+    }
+
+  for (const Vector &SCAN : MOVES::KNIGHT)
+    for (const int &i : {-1, 1}) {
+      int piece = (*BORD)[CORD + (SCAN * i)];
+      if (piece * BY > 0 && abs(piece) == KIND::KNIGHT)
+        return true;
+    }
+
+  // a pawn of side BY attacks CORD from (±1 , BY) :
+  // white pawn attacks up (y - 1) so it sits one row below (y + 1)
+  for (const int &DX : {-1, 1})
+    if ((*BORD)[CORD + Vector(DX, BY)] == BY * KIND::PAWN)
       return true;
 
   return false;
 }
 
+// is the piece on CORD attacked ( by the other side )
+bool ImOAttacked(const Vector &CORD, Bord *BORD) {
+  int ME = (*BORD)[CORD];
+  if (ME == 0 || ME == NaN)
+    return false;
+  return IsAttacked(CORD, (ME > 0) ? -1 : 1, BORD);
+}
+
 bool CanImove(const Vector &FROM, const Vector &TO, Bord *BORD) {
 
+  Vector MyKing = BORD->MyKing(FROM);
+  if (MyKing == FROM)
+    MyKing = TO;
   int to = (*BORD)(TO);
+
+  // en passant : a pawn goes diagonal on an empty square, the pawn that
+  // gets eaten is beside FROM ( not on TO ) so remove it for the test
+  bool EP = abs((*BORD)(FROM)) == KIND::PAWN && TO.x != FROM.x && to == 0;
+  Vector VICTIM(TO.x, FROM.y);
+  int victim = 0;
+
   BORD->move(FROM, TO);
-  bool kingsafty = ImOAttacked(BORD->MyKing(TO), BORD);
+  if (EP) {
+    victim = (*BORD)(VICTIM);
+    (*BORD)(VICTIM) = 0;
+  }
+  bool kingsafty = ImOAttacked(MyKing, BORD);
+  if (EP)
+    (*BORD)(VICTIM) = victim;
   BORD->move(TO, FROM);
   (*BORD)(TO) = to;
   return !kingsafty;
 }
 
-std::list<Vector> ATTACK::RUCK(const Vector &CORD, Bord *BORD) {
-  std::list<Vector> ATTACK = {};
-
+void ATTACK::RUCK(const Vector &CORD, Bord *BORD, MoveList &OUT) {
   for (const Vector &DIR : MOVES::RUCK)
-    ITERATION(BORD, ATTACK, CORD, DIR);
-
-  return ATTACK;
+    ITERATION(BORD, OUT, CORD, DIR);
 }
 
-std::list<Vector> ATTACK::BESHOP(const Vector &CORD, Bord *BORD) {
-  std::list<Vector> ATTACK = {};
+void ATTACK::BESHOP(const Vector &CORD, Bord *BORD, MoveList &OUT) {
   for (const Vector &DIR : MOVES::BESHOP)
-    ITERATION(BORD, ATTACK, CORD, DIR);
-  return ATTACK;
+    ITERATION(BORD, OUT, CORD, DIR);
 }
 
-std::list<Vector> ATTACK::KNIGHT(const Vector &CORD, Bord *BORD) {
-  std::list<Vector> ATTACK;
+void ATTACK::KNIGHT(const Vector &CORD, Bord *BORD, MoveList &OUT) {
 
   for (Vector SCAN : MOVES::KNIGHT)
     for (const int &i : {-1, 1})
       if ((*BORD)[CORD + (SCAN * i)] != NaN)
         if (((*BORD)[CORD] * (*BORD)[CORD + (SCAN * i)] <= 0))
-          ATTACK.push_front(CORD + (SCAN * i));
-
-  return ATTACK;
+          OUT.add(CORD + (SCAN * i));
 }
 
-std::list<Vector> ATTACK::PAWN(const Vector &CORD, Bord *BORD) {
+// only the diagonals where there is something to eat
+void ATTACK::PAWN(const Vector &CORD, Bord *BORD, MoveList &OUT) {
 
-  std::list<Vector> ATTACK;
+  int ME = (*BORD)[CORD];
+  int SIDE = (ME > 0) ? 1 : -1; // no more  ME / abs(ME)  ( divide by 0 )
   Vector SCAN;
 
-  SCAN = (Vector({1, -((*BORD)[CORD] / abs((*BORD)[CORD]))}));
+  SCAN = Vector(1, -SIDE);
 
-  if ((*BORD)[CORD] * (*BORD)[SCAN + CORD] < 0 && (*BORD)[SCAN + CORD] != NaN)
-    ATTACK.push_front(SCAN + CORD);
+  if (ME * (*BORD)[SCAN + CORD] < 0 && (*BORD)[SCAN + CORD] != NaN)
+    OUT.add(SCAN + CORD);
 
   // LEFT catchebul POWN
   SCAN *= {-1, 1};
-  if ((*BORD)[CORD] * (*BORD)[SCAN + CORD] < 0 && (*BORD)[SCAN + CORD] != NaN)
-    ATTACK.push_front(SCAN + CORD);
-
-  return ATTACK;
+  if (ME * (*BORD)[SCAN + CORD] < 0 && (*BORD)[SCAN + CORD] != NaN)
+    OUT.add(SCAN + CORD);
 }
 
-std::list<Vector> ATTACK::QUIN(const Vector &CORD, Bord *BORD) {
-  std::list<Vector> ATTACK = {};
+void ATTACK::QUIN(const Vector &CORD, Bord *BORD, MoveList &OUT) {
 
   for (const std::array<Vector, 4> &MOVES : {MOVES::BESHOP, MOVES::RUCK})
     for (const Vector &DIR : MOVES)
-      ITERATION(BORD, ATTACK, CORD, DIR);
-  return ATTACK;
+      ITERATION(BORD, OUT, CORD, DIR);
 }
 
-std::list<Vector> ATTACK::KING(const Vector &CORD, Bord *BORD) {
-  std::list<Vector> ATTACK;
+void ATTACK::KING(const Vector &CORD, Bord *BORD, MoveList &OUT) {
   for (const std::array<Vector, 4> &MOVES : {MOVES::BESHOP, MOVES::RUCK})
     for (const Vector &DIR : MOVES)
       if ((*BORD)[CORD] * (*BORD)[CORD + DIR] <= 0 &&
           ((*BORD)[CORD + DIR] != NaN))
-        ATTACK.push_front(CORD + DIR);
-  return ATTACK;
+        OUT.add(CORD + DIR);
 }
 
-void ITERATION(Bord *BORD, std::list<Vector> &ATTACK, const Vector &CORD,
+void ITERATION(Bord *BORD, MoveList &OUT, const Vector &CORD,
                const Vector &DIR) {
   Vector SCAN = CORD + DIR;
   while (((*BORD)[CORD] * (*BORD)[SCAN] <= 0) && ((*BORD)[SCAN] != NaN)) {
-    ATTACK.push_front(SCAN);
+    OUT.add(SCAN);
     if ((*BORD)[SCAN])
       break;
     SCAN += DIR;
   }
 }
 
-std::list<Vector> P_Pmove(const Vector &CORD, Bord *BORD) {
-  std::list<Vector> MOVE;
+void P_Pmove(const Vector &CORD, Bord *BORD, MoveList &OUT) {
+
+  int SIDE = ((*BORD)(CORD) > 0) ? 1 : -1;
 
   if (!(*BORD)[(CORD + (DIR::UP * (*BORD)[CORD]))])
-    MOVE.push_front((CORD + (DIR::UP * (*BORD)[CORD])));
-  if ((*BORD)[CORD + ((DIR::DOWN * 2) * (*BORD)[CORD])] == NaN)
-    if (!(*BORD)[CORD + ((DIR::UP * 2) * (*BORD)[CORD])] &&
-        !(*BORD)[CORD + (DIR::UP * (*BORD)[CORD])])
-      MOVE.push_front(CORD + ((DIR::UP * 2) * (*BORD)[CORD]));
-  for (Vector SCAN : ATTACK::PAWN(CORD, BORD))
-    MOVE.push_front(SCAN);
+    OUT.add((CORD + (DIR::UP * (*BORD)[CORD])));
 
-  // TODO TODO : on peson
+  // double push : ONLY from the home rank ( white row 6 , black row 1 )
+  // ( the old check on the square 2 rows behind the pawn was wrong and
+  //   let pawns jump 2 squares from any rank )
+  int HOME_Y = (SIDE > 0) ? 6 : 1;
+  if (CORD.y == HOME_Y) {
+    if (!(*BORD)[CORD + (DIR::UP * 2 * SIDE)] &&
+        !(*BORD)[CORD + (DIR::UP * SIDE)])
+      OUT.add(CORD + (DIR::UP * 2 * SIDE));
+  }
+  ATTACK::PAWN(CORD, BORD, OUT);
 
-  std::cout << "============================================================"
-            << std::endl;
-  std::cout << " (CORD + DIR::RIGHT) " << (CORD + DIR::RIGHT).str()
-            << std::endl;
-  std::cout << " (CORD + DIR::LEFT) " << (CORD + DIR::LEFT).str() << std::endl;
-  std::cout << "  (BORD->OOP_CORD) " << BORD->OOP_CORD.str() << std::endl;
-
-  if (((CORD + DIR::RIGHT) == BORD->OOP_CORD) ^
+  // on peson : the pawn that just double pushed is right beside me
+  // and it must be an enemy pawn ( OOP_CORD is reset on every move )
+  if (((CORD + DIR::RIGHT) == BORD->OOP_CORD) ||
       ((CORD + DIR::LEFT) == BORD->OOP_CORD))
+    if ((*BORD)[CORD] * (*BORD)[BORD->OOP_CORD] < 0)
 
-    MOVE.push_front(BORD->OOP_CORD + Vector(0, -(*BORD)[CORD]));
-
-  return MOVE;
+      OUT.add(BORD->OOP_CORD + Vector(0, -(*BORD)[CORD]));
 }
 
-std::list<Vector> casling(const Vector &KING, Bord *BORD) {
-
-  std::list<Vector> MOVE = {};
+void casling(const Vector &KING, Bord *BORD, MoveList &OUT) {
 
   if (ImOAttacked(KING, BORD))
-    return MOVE;
+    return;
 
+  // the square where the king lands is checked later by Get_Move,
+  // here only the square he passes through
   if ((*BORD)(KING) == KIND::KING && (BORD->king7)) {
-    if ((BORD->ruke70) && (CanImove(KING, KING + DIR::LEFT * 1, BORD)) &&
-        (CanImove(KING, KING + DIR::LEFT * 2, BORD)) &&
-        ((*BORD)(KING + DIR::LEFT * 1) == 0) &&
+    if ((BORD->ruke70) && ((*BORD)(KING + DIR::LEFT * 1) == 0) &&
         ((*BORD)(KING + DIR::LEFT * 2) == 0) &&
-        ((*BORD)(KING + DIR::LEFT * 3) == 0))
-      MOVE.push_front(KING + DIR::LEFT * 2);
+        ((*BORD)(KING + DIR::LEFT * 3) == 0) &&
+        (CanImove(KING, KING + DIR::LEFT * 1, BORD)))
+      OUT.add(KING + DIR::LEFT * 2);
 
-    if ((BORD->ruke77) && (CanImove(KING, KING + DIR::RIGHT * 1, BORD)) &&
-        (CanImove(KING, KING + DIR::RIGHT * 2, BORD)) &&
-        ((*BORD)(KING + DIR::RIGHT * 1) == 0) &&
-        ((*BORD)(KING + DIR::RIGHT * 2) == 0))
-      MOVE.push_front(KING + DIR::RIGHT * 2);
+    if ((BORD->ruke77) && ((*BORD)(KING + DIR::RIGHT * 1) == 0) &&
+        ((*BORD)(KING + DIR::RIGHT * 2) == 0) &&
+        (CanImove(KING, KING + DIR::RIGHT * 1, BORD)))
+      OUT.add(KING + DIR::RIGHT * 2);
   } else if ((*BORD)(KING) == -KIND::KING && (BORD->king0)) {
-    if ((BORD->ruke00) && (CanImove(KING, KING + DIR::LEFT * 1, BORD)) &&
-        (CanImove(KING, KING + DIR::LEFT * 2, BORD)) &&
-        ((*BORD)(KING + DIR::LEFT * 1) == 0) &&
+    if ((BORD->ruke00) && ((*BORD)(KING + DIR::LEFT * 1) == 0) &&
         ((*BORD)(KING + DIR::LEFT * 2) == 0) &&
-        ((*BORD)(KING + DIR::LEFT * 3) == 0))
-      MOVE.push_front(KING + DIR::LEFT * 3);
+        ((*BORD)(KING + DIR::LEFT * 3) == 0) &&
+        (CanImove(KING, KING + DIR::LEFT * 1, BORD)))
+      OUT.add(KING + DIR::LEFT * 2); // was LEFT * 3 : king landed on the rook
 
-    if ((BORD->ruke07) && (CanImove(KING, KING + DIR::RIGHT * 1, BORD)) &&
-        (CanImove(KING, KING + DIR::RIGHT * 2, BORD)) &&
-        ((*BORD)(KING + DIR::RIGHT * 1) == 0) &&
-        ((*BORD)(KING + DIR::RIGHT * 2) == 0))
-      MOVE.push_front(KING + DIR::RIGHT * 2);
+    if ((BORD->ruke07) && ((*BORD)(KING + DIR::RIGHT * 1) == 0) &&
+        ((*BORD)(KING + DIR::RIGHT * 2) == 0) &&
+        (CanImove(KING, KING + DIR::RIGHT * 1, BORD)))
+      OUT.add(KING + DIR::RIGHT * 2);
   }
-  return MOVE;
 }
 
 void O_O(Vector From, Bord *BORD) {
@@ -233,6 +260,12 @@ void O_O_O(Vector From, Bord *BORD) {
 void move(Vector From, Vector To, Bord *BORD) {
   // O(false);
   //  TODO : ADD TO HISTORIC
+  int SIDE = ((*BORD)(From) > 0) ? 1 : -1;
+  bool LAST_ROW = false; // the pone arived at the last row ( promotion pick )
+
+  // always reset, only a double push can set it again
+  BORD->OOP_CORD = Vector({-1, -1});
+
   switch (abs((*BORD)(From))) {
   case KIND::KING:
 
@@ -244,22 +277,33 @@ void move(Vector From, Vector To, Bord *BORD) {
       O_O_O(From, BORD);
     else
       BORD->move(From, To);
+
+    // MyKing() reads these, they must follow the king
+    if (SIDE > 0)
+      BORD->W_king = To;
+    else
+      BORD->B_king = To;
   }
 
   break;
-  case 1: {
-    // std::cout <<
+  case KIND::PAWN: {
     if (abs(To.y - From.y) == 2) {
 
       BORD->move(From, To);
       BORD->OOP_CORD = To;
-    } else if (BORD->OOP_CORD == Vector(To.x, From.y)) {
+    } else if (To.x != From.x && (*BORD)(To) == 0) {
+      // on peson : the eaten pawn is beside From, not on To
       BORD->move(From, To);
       (*BORD)(Vector(To.x, From.y)) = 0;
-      BORD->OOP_CORD = Vector({-1, -1});
     } else {
-      BORD->OOP_CORD = Vector({-1, -1});
       BORD->move(From, To);
+    }
+
+    // * the pone arived at the last row : it stays a pone and the turn does
+    //   NOT pass , the next pick is what piece he wants to become
+    if (To.y == 0 || To.y == 7) {
+      BORD->PROM_CORD = To;
+      LAST_ROW = true;
     }
   } break;
   default:
@@ -267,5 +311,5 @@ void move(Vector From, Vector To, Bord *BORD) {
     break;
   }
 
-  BORD->UpDate();
+  BORD->UpDate(!LAST_ROW); // the promotion does not pass the turn
 }

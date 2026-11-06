@@ -453,6 +453,10 @@ namespace Walnut {
 
 		glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 
+		// [chess] stable X11 WM_CLASS for window-manager rules (Hyprland)
+		glfwWindowHintString(GLFW_X11_CLASS_NAME, "chess");
+		glfwWindowHintString(GLFW_X11_INSTANCE_NAME, "chess");
+
 		m_WindowHandle = glfwCreateWindow(m_Specification.Width, m_Specification.Height, m_Specification.Name.c_str(), NULL, NULL);
 
 		if (m_Specification.CenterWindow)

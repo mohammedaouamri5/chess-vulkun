@@ -1,0 +1,50 @@
+{
+	"version": 3,
+	"cmakeMinimumRequired": { "major": 3, "minor": 20, "patch": 0 },
+	"configurePresets": [
+		{
+			"name": "logs-rendering",
+			"displayName": "LOG_RENDERING only",
+			"generator": "Ninja",
+			"binaryDir": "${sourceDir}/build",
+			"cacheVariables": {
+				"LOG_RENDERING": "1",
+				"LOG_BORD": "0",
+				"LOG_ENGINE": "0"
+			}
+		},
+		{
+			"name": "logs-bord",
+			"displayName": "LOG_BORD only",
+			"generator": "Ninja",
+			"binaryDir": "${sourceDir}/build",
+			"cacheVariables": {
+				"LOG_RENDERING": "0",
+				"LOG_BORD": "1",
+				"LOG_ENGINE": "0"
+			}
+		},
+		{
+			"name": "logs-engine",
+			"displayName": "LOG_ENGINE only",
+			"generator": "Ninja",
+			"binaryDir": "${sourceDir}/build",
+			"cacheVariables": {
+				"LOG_RENDERING": "0",
+				"LOG_BORD": "0",
+				"LOG_ENGINE": "1"
+			}
+		},
+		{
+			"name": "logs-all",
+			"displayName": "all channels",
+			"generator": "Ninja",
+			"binaryDir": "${sourceDir}/build",
+			"cacheVariables": {
+				"LOG_RENDERING": "1",
+				"LOG_BORD": "1",
+				"LOG_ENGINE": "1"
+			}
+		}
+	]
+}

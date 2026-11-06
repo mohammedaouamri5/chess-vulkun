@@ -90,5 +90,5 @@ void Vector::DOWN()
 }
 void Vector::LEFT()
 {
-    this->y--;
+    this->x--;
 }

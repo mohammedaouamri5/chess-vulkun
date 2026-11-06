@@ -856,6 +856,10 @@ static void ImGui_ImplGlfw_CreateWindow(ImGuiViewport* viewport)
 #if GLFW_HAS_WINDOW_TOPMOST
     glfwWindowHint(GLFW_FLOATING, (viewport->Flags & ImGuiViewportFlags_TopMost) ? true : false);
 #endif
+    // [chess] give every ImGui panel window a stable X11 WM_CLASS instead of
+    // GLFW's default (window title), so window managers can target them
+    glfwWindowHintString(GLFW_X11_CLASS_NAME, "chess");
+    glfwWindowHintString(GLFW_X11_INSTANCE_NAME, "chess");
     GLFWwindow* share_window = (bd->ClientApi == GlfwClientApi_OpenGL) ? bd->Window : NULL;
     vd->Window = glfwCreateWindow((int)viewport->Size.x, (int)viewport->Size.y, "No Title Yet", NULL, share_window);
     vd->WindowOwned = true;

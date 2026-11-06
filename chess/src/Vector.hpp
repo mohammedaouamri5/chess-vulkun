@@ -2,8 +2,6 @@
 #ifndef Vector_HPP
 #define Vector_HPP
 
-#include"iostream"
-#include <string>
 /*
  * THE SIZE      :  is a (x , y) that contin the withe and the hight of the window 
  * THE EDGE      :  is a (x , y) that contin the distens biween the bord and thee egde of the window
@@ -19,13 +17,6 @@ struct Vector
 
 	Vector(int p_x, int p_y): x(p_x), y(p_y){}
 
-	void Print()
-	{
-		std::cout << x << ", " << y << std::endl;
-	}
-	std::string str() {
-		return std::string("{ " + std::to_string(x) + " , " + std::to_string(y) + " }");
-	}
 	int x, y;
 	Vector operator*(const Vector& p_vec) const;
 	Vector operator*(int p_lamda) const;

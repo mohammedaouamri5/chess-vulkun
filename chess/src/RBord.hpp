@@ -7,8 +7,8 @@
 #include "Vector.hpp"
 #include "Walnut/Image.h"
 #include "Bord.hpp"
+#include "List.hpp"
 
-#include <list>
 #include <memory>
 
  
@@ -17,7 +17,7 @@ class RBord : public Walnut::Layer
 {
 public:
 	Bord* BORD = new Bord( );
-	std::list<Vector> MOVES;
+	MoveList MOVES;
 
 public:
 	// this function are for randring
@@ -48,13 +48,13 @@ public:
 
 
 	int Valid_move(Vector COORDONET);
-	void Set_Move(const std::list<Vector>& p_moves);
+	void Set_Move(const MoveList& p_moves);
 
 private:
 
 	void R_image(const ImVec2& POSITHION, const ImVec2& boardSize, const Vector& Pies);
 	void Rendere();  
-	void GetImage(int pies, ImVec2 dim);
+	void GetImage(int8_t pies, ImVec2 dim);
 	void DrawChessboard(const ImVec2& startPos, const ImVec2& boardSize, const ImVec4& coler1, const ImVec4& coler2);
 
 private:

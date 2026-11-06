@@ -5,12 +5,12 @@
 #include <iostream>
 
 namespace KIND {
-const int KING = 2401;
-const int QUIN = 15;
-const int KNIGHT = 2;
-const int RUKE = 5;
-const int BESHOP = 3;
-const int PAWN = 1;
+const int8_t KING = 100;
+const int8_t QUIN = 15;
+const int8_t KNIGHT = 2;
+const int8_t RUKE = 5;
+const int8_t BESHOP = 3;
+const int8_t PAWN = 1;
 } // namespace KIND
 
 namespace DIR {
@@ -30,5 +30,5 @@ const std::array<Vector, 4> KNIGHT = {
     (DIR::UP * 2 + DIR::RIGHT), (DIR::UP * 2 + DIR::LEFT)};
 } // namespace MOVES
 enum COLOR { WHITE = 1, BLACK = -1 };
-const int NaN = 91;
+const int8_t NaN = 91;
 

@@ -7,7 +7,7 @@ project "chess"
 
    defines { "IMGUI_DEFINE_MATH_OPERATORS" }
 
-   files { "src/**.h", "src/**.cpp" }
+   files { "src/**.h", "src/**.hpp", "src/**.cpp" }
 
    includedirs
    {
